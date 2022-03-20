@@ -1,0 +1,37 @@
+// 光绘制模块
+
+#include <cc-global>
+#include <mk_dist_field_func>
+
+#define iResolution cc_screenSize
+#define iTime cc_time.x
+#define iTimeDelta cc_time.y
+#define iFrame cc_time.z
+
+// shadertoy template
+void mainImage (out vec4 fragColor, in vec2 fragCoord) {
+  // Normalized pixel coordinates (from 0 to 1)
+  vec2 uv = fragCoord / iResolution.xy;
+  // Time varying pixel color
+  vec3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + vec3(0, 2, 4));
+  // Output to screen
+  fragColor = vec4(col, 1.0);
+}
+
+
+// 光
+vec4 draw_light(vec2 render_v2, vec2 light_v2, float radius_f, vec4 color_v4)
+{
+  // 渲染点至光距离
+	float render_to_light_dist_f = length(render_v2 - light_v2);
+  // 超出范围
+	if (render_to_light_dist_f > radius_f) {
+    return vec4(0.0);
+  }
+	// 光衰减
+	float fall_f = 1.0 - render_to_light_dist_f / radius_f;
+  fall_f *= fall_f;
+	// 中心圆
+	float source_f = clamp(-sdf_circle(render_v2 - light_v2, radius_f), 0.0, 1.0);
+	return (source_f) * color_v4 * fall_f;
+}

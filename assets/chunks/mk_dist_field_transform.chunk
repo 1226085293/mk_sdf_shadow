@@ -1,0 +1,44 @@
+// 距离场变换函数
+
+// 平滑合并
+float smooth_merge(float d1, float d2, float k) {
+    float h = clamp(0.5 + 0.5*(d2 - d1) / k, 0.0, 1.0);
+    return mix(d2, d1, h) - k * h * (1.0-h);
+}
+
+// 合并
+float merge(float d1, float d2) {
+	return min(d1, d2);
+}
+
+// 合并排除
+float merge_exclude(float d1, float d2) {
+	return min(max(-d1, d2), max(-d2, d1));
+}
+
+// 减去
+float substract(float d1, float d2) {
+	return max(-d1, d2);
+}
+
+// 相交
+float intersect(float d1, float d2) {
+	return max(d1, d2);
+}
+
+// 逆时针旋转
+vec2 rotate_ccw(vec2 p, float a) {
+	mat2 m = mat2(cos(a), sin(a), -sin(a), cos(a));
+	return p * m;	
+}
+
+// 顺时针旋转
+vec2 rotate_cw(vec2 p, float a) {
+	mat2 m = mat2(cos(a), -sin(a), sin(a), cos(a));
+	return p * m;
+}
+
+// 平移
+vec2 translate(vec2 p, vec2 t) {
+	return p - t;
+}
