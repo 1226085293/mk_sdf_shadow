@@ -10,3 +10,4 @@ float sdf_box(in vec2 render_v2, in vec2 size_v2) {
     vec2 dist_v2 = abs(render_v2) - size_v2;
     return length(max(dist_v2, 0.0)) + min(max(d.x, d.y),0.0);
 }
+

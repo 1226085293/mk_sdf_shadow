@@ -16,7 +16,9 @@ export class sdf_shadow extends Component {
 		material.setProperty("light_radius_v2s", [cc.v2(300), cc.v2(80)]);
 		// 光颜色
 		material.setProperty("light_color_v2s", [cc.v4(0, 1, 1, 1), cc.v4(1, 0, 0, 1)]);
+
 		material.setProperty("light_polygon_v2s", [
+			cc.v2(3.0, -1.0),
 			cc.v2(100.0, 100.0),
 			cc.v2(200.0, 100.0),
 			cc.v2(200.0, 150.0),
