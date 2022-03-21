@@ -1,0 +1,16 @@
+// 常量定义
+
+// 最大光数量
+#define max_light_length 10
+// 最大阴影步进，影响阴影生成距离，光源范围过大导致阴影部分消失可增大此常量
+#define max_shadow_step 64
+// 最大圆形数量
+#define max_circle_size 12
+// 最大矩形数量
+#define max_box_size 12
+// 最大多边形数量
+#define max_polygon_size 3
+// 最大多边形坐标数量
+#define max_polygon_pos_size 12
+// 所有多边形坐标数量
+#define all_polygon_pos_size max_polygon_pos_size * max_polygon_size

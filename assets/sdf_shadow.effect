@@ -1,4 +1,5 @@
 // Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
+
 CCEffect %{
   techniques:
   - passes:
@@ -17,182 +18,137 @@ CCEffect %{
         cullMode: none
       properties:
         alphaThreshold: { value: 0.5 }
-        light_pos_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
-        light_radius_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
+        light_pos_radius_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
         light_color_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
+        light_circle_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
+        light_box_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
         light_polygon_v4s: { value: [0.0, 0.0, 0.0, 0.0] }
 }%
 
 CCProgram sprite-vs %{
-  precision highp float;
-  #include <cc-global>
-  #if USE_LOCAL
-    #include <cc-local>
-  #endif
-  in vec3 a_position;
-  in vec2 a_texCoord;
-  in vec4 a_color;
+	precision highp float;
+	#include <cc-global>
+	#if USE_LOCAL
+		#include <cc-local>
+	#endif
+	in vec3 a_position;
+	in vec2 a_texCoord;
+	in vec4 a_color;
 
-  out vec4 color;
-  out vec2 uv0;
+	out vec4 color;
+	out vec2 uv0;
 
-  vec4 vert () {
-    vec4 pos = vec4(a_position, 1);
+	vec4 vert () {
+		vec4 pos = vec4(a_position, 1);
 
-    #if USE_LOCAL
-      pos = cc_matWorld * pos;
-    #endif
+		#if USE_LOCAL
+		pos = cc_matWorld * pos;
+		#endif
 
-    #if USE_PIXEL_ALIG4ME4T
-      pos = cc_matView * pos;
-      pos.xyz = floor(pos.xyz);
-      pos = cc_matProj * pos;
-    #else
-      pos = cc_matViewProj * pos;
-    #endif
+		#if USE_PIXEL_ALIG4ME4T
+		pos = cc_matView * pos;
+		pos.xyz = floor(pos.xyz);
+		pos = cc_matProj * pos;
+		#else
+		pos = cc_matViewProj * pos;
+		#endif
 
-    uv0 = a_texCoord;
-    color = a_color;
+		uv0 = a_texCoord;
+		color = a_color;
 
-    return pos;
-  }
+		return pos;
+	}
 }%
 
 CCProgram sprite-fs %{
-  precision highp float;
-  #include <embedded-alpha>
-  #include <alpha-test>
-  #include <cc-global>
+	precision highp float;
+	#include <embedded-alpha>
+	#include <alpha-test>
+	#include <cc-global>
 
-  #include <mk_light>
-  #include <mk_dist_field_func>
-  #include <mk_dist_field_transform>
-  
-  // 最大光数量
-  #define max_light_length 10
-  // 最大阴影步进，影响阴影生成距离，光源范围过大导致阴影部分消失可增大此常量
-  #define max_shadow_step 64
-  // 所有多边形坐标数量
-  #define all_polygon_pos_size 384
+	#include <mk_sdf_shadow_define>
+	#include <mk_light>
+	#include <mk_dist_field_func>
+	#include <mk_dist_field_transform>
 
-  // // 最大多边形坐标数量
-  // #define max_polygon_pos_size 64
-  // 最大多边形数量
-  #define max_polygon_size 12
-  
+	in vec4 color;
 
+	uniform ConstantsVec {
+		// 光坐标 & 半径（xy：坐标，z：半径）
+		vec4 light_pos_radius_v4s[max_light_length];
+		// 光颜色
+		vec4 light_color_v4s[max_light_length];
+    // 圆（xy：坐标，z：半径）
+		vec4 light_circle_v4s[max_circle_size];
+    // 矩形（xy：坐标，zw：宽高）
+		vec4 light_box_v4s[max_box_size];
+		// 多边形数组
+		vec4 light_polygon_v4s[all_polygon_pos_size];
+	};
+    vec2 polygon[max_polygon_pos_size];
 
-  in vec4 color;
-
-  uniform ConstantsVec {
-    // 光坐标数组
-    vec4 light_pos_v4s[max_light_length];
-    // 光半径数组
-    vec4 light_radius_v4s[max_light_length];
-    // 光颜色数组
-    vec4 light_color_v4s[max_light_length];
-    // 多边形数组
-    vec4 light_polygon_v4s[all_polygon_pos_size];
-  };
-
-  #if USE_TEXTURE
-    in vec2 uv0;
-    #pragma builtin(local)
-    layout(set = 2, binding = 10) uniform sampler2D cc_spriteTexture;
-  #endif
-
-// float sdPolygon(in vec2 render_v2, in int N) {
-//     float d = dot(render_v2 - light_polygon_v4s[0].xy, render_v2 - light_polygon_v4s[0].xy);
-//     float s = 1.0;
-//     int j = N - 1;
-//     for(int i = 0; i < N; i++) {
-//         vec2 e = light_polygon_v4s[j].xy - light_polygon_v4s[i].xy;
-//         vec2 w = render_v2 - light_polygon_v4s[i].xy;
-//         vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
-//         d = min(d, dot(b, b));
-//         bvec3 c = bvec3(render_v2.y >= light_polygon_v4s[i].y, render_v2.y < light_polygon_v4s[j].y, e.x * w.y > e.y * w.x);
-//         if(all(c) || all(not(c))) {
-//             s *= -1.0;
-//         }
-//         j = i;
-//     }
-//     return s*sqrt(d);
-// }
+	#if USE_TEXTURE
+		in vec2 uv0;
+		#pragma builtin(local)
+		layout(set = 2, binding = 10) uniform sampler2D cc_spriteTexture;
+	#endif
 
   // 距离场函数
   float scene_dist(vec2 render_v2) {
-	  float dist = sdf_circle(translate(render_v2, vec2(200.0, 250.0)), 50.0);
+    float m = 9999.0;
 
+    // 绘制圆
+    for (int k_i = 0; k_i < max_circle_size; ++k_i) {
+      if (light_circle_v4s[k_i].x == -1.0) {
+        break;
+      }
+      m = merge(m, sdf_circle(translate(render_v2, light_circle_v4s[k_i].xy), light_circle_v4s[k_i].z));
+    }
 
-    vec2 light_polygon_j_v2;
-    int end_index_i = 0;
-    float d = 0.0;
-    float s = 0.0;
-    // 录入多边形坐标数量列表
-    for (int k_i = 0; k_i < all_polygon_pos_size; ++k_i) {
-      // j = N - 1;
-      if (k_i == end_index_i) {
-        d = dot(render_v2 - light_polygon_v4s[k_i].xy, render_v2 - light_polygon_v4s[k_i].xy);
-        s = 1.0;
-        for (int k2_i = 0; k2_i < all_polygon_pos_size; ++k2_i) {
-          if (k2_i <= k_i) {
-            continue;
-          }
-          if (light_polygon_v4s[k2_i].x == -1.0) {
-            dist = merge(dist, s*sqrt(d));
-            if (end_index_i == 0) {
-              end_index_i = k2_i;
-              light_polygon_j_v2 = light_polygon_v4s[k2_i - 1].xy;
-            } else {
-              end_index_i = k2_i;
-              light_polygon_j_v2 = light_polygon_v4s[k2_i - 1].xy;
-              // 结尾用两个-1
-              if (light_polygon_v4s[k2_i].y == -1.0) {
-                break;
-              }
-              continue;
-            }
+    // 绘制矩形
+    for (int k_i = 0; k_i < max_box_size; ++k_i) {
+      if (light_box_v4s[k_i].x == -1.0) {
+        break;
+      }
+      m = merge(m, sdf_box(translate(render_v2, light_box_v4s[k_i].xy), light_box_v4s[k_i].zw));
+    }
+
+    // 绘制多边形
+    if (light_polygon_v4s[0].x != -1.0) {
+      for (int k_i = 0; k_i < max_polygon_size; ++k_i) {
+        for (int k2_i = 0; k2_i < max_polygon_pos_size; ++k2_i) {
+          polygon[k2_i] = light_polygon_v4s[k_i * max_polygon_pos_size + k2_i].xy;
+          if (polygon[k2_i].x == -1.0) {
+            m = merge(m, sdf_polygon(render_v2, polygon));
+            break;
           }
         }
       }
-      
-      vec2 e = light_polygon_j_v2 - light_polygon_v4s[k_i].xy;
-      vec2 w = render_v2 - light_polygon_v4s[k_i].xy;
-      vec2 b = w - e * clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
-      d = min(d, dot(b, b));
-      bvec3 c = bvec3(render_v2.y >= light_polygon_v4s[k_i].y, render_v2.y < light_polygon_j_v2.y, e.x * w.y > e.y * w.x);
-      if(all(c) || all(not(c))) {
-          s *= -1.0;
-      }
-      light_polygon_j_v2 = light_polygon_v4s[k_i].xy;
     }
-    
-    
-
-    return dist;
-    // return merge(dist, dist2);
+    return m;
   }
 
-  // 阴影
-  float shadow(vec2 render_v2, vec2 light_v2, float hard_f) {
-    // 当前渲染位置到光源位置的方向向量
-    vec2 render_to_light_dir_v2 = normalize(light_v2 - render_v2);
-    // 渲染位置至光源位置距离
-    float render_to_light_dist_f = length(render_v2 - light_v2);
-    // 可见光的一部分，从一个半径开始（最后添加下半部分）；
-    float brightness_f = hard_f * render_to_light_dist_f;
-    // 行走距离
-    float travel_dist_f = 0.01;
-
-    for (int k_i = 0; k_i < max_shadow_step; ++k_i) {				
+  // 软阴影
+	float shadow(vec2 render_v2, vec2 light_v2, float hard_f) {
+		// 当前渲染位置到光源位置的方向向量
+		vec2 render_to_light_dir_v2 = normalize(light_v2 - render_v2);
+		// 渲染位置至光源位置距离
+		float render_to_light_dist_f = length(render_v2 - light_v2);
+		// 可见光的一部分，从一个半径开始（最后添加下半部分）；
+		float brightness_f = hard_f * render_to_light_dist_f;
+		// 行走距离
+		float travel_dist_f = 0.01;
+    // 场景距离
+    float dist_f;
+		for (int k_i = 0; k_i < max_shadow_step; ++k_i) {				
       // 当前位置到场景的距离
-      float dist_f = scene_dist(render_v2 + render_to_light_dir_v2 * travel_dist_f);
+      dist_f = scene_dist(render_v2 + render_to_light_dir_v2 * travel_dist_f);
 
       // 渲染点在物体内部
       if (dist_f < -hard_f) {
-          return 0.0;
+        return 0.0;
       }
-          
+        
       // dist_f 不变，brightness_f 越小，在越靠近光源和物体时 brightness_f 越小
       brightness_f = min(brightness_f, dist_f / travel_dist_f);
       
@@ -200,52 +156,78 @@ CCProgram sprite-fs %{
       // abs 避免朝回走
       travel_dist_f += max(1.0, abs(dist_f));
 
-		  // 渲染点的距离超过光源点
+      // 渲染点的距离超过光源点
       if (travel_dist_f > render_to_light_dist_f) {
         break;
       }
-    }
+		}
 
-	  // 消除波纹线
-	  // brightness_f * render_to_light_dist_f 根据距离平滑, 离光源越近越小
-    // brightness_f = clamp((brightness_f * render_to_light_dist_f / hard_f), 0.0, 1.0);
-    // 放大阴影，hard_f 越大结果越小则阴影越大, hard_f / (2.0 * hard_f) 使结果趋近于0.5，用于平滑过渡
-    brightness_f = clamp((brightness_f * render_to_light_dist_f + hard_f) / (2.0 * hard_f), 0.0, 1.0);
-    brightness_f = smoothstep(0.0, 1.0, brightness_f);
-    return brightness_f;
+		// 消除波纹线
+		// brightness_f * render_to_light_dist_f 根据距离平滑, 离光源越近越小
+		// brightness_f = clamp((brightness_f * render_to_light_dist_f / hard_f), 0.0, 1.0);
+		// 放大阴影，hard_f 越大结果越小则阴影越大, hard_f / (2.0 * hard_f) 使结果趋近于0.5，用于平滑过渡
+		brightness_f = clamp((brightness_f * render_to_light_dist_f + hard_f) / (2.0 * hard_f), 0.0, 1.0);
+		brightness_f = smoothstep(0.0, 1.0, brightness_f);
+		return brightness_f;
+	}
+
+  // 硬阴影
+  float shadow3(vec2 p, vec2 pos, float radius)
+  {
+    // 当前渲染位置到光源位置的方向向量
+    vec2 dir = normalize(pos - p);
+    // 渲染位置至光源位置距离
+    float dl = length(pos - p);
+    // 
+    float dt = 0.01;
+
+    for (int i = 0; i < max_shadow_step; ++i)
+    {				
+      // 渲染点到场景的距离
+      float sd = scene_dist(p + dir * dt);
+      // 小于0表示在物体内部
+      if (sd < 0.0) {
+        return 0.0;
+      }
+      // abs：避免往回走
+      dt += abs(sd);
+      // 渲染点的距离超过光源点
+      if (dt > dl) {
+        return 1.0;
+      }
+      
+    }
+    return 0.0;
   }
 
-  vec4 frag () {
-    vec4 output_v4 = vec4(0.2, 0.2, 0.2, 1.0);
-    // 渲染坐标
-    vec2 render_v2 = gl_FragCoord.xy + vec2(0.5);
-    // 屏幕中心坐标
-    vec2 center_v2 = cc_screenSize.xy / 2.0;
-    
-    float dist_f = scene_dist(render_v2);
+	vec4 frag () {
+		vec4 output_v4;
+		// 渲染坐标
+		vec2 render_v2 = gl_FragCoord.xy + vec2(0.5);
+		// 屏幕中心坐标
+		vec2 center_v2 = cc_screenSize.xy / 2.0;
+		
+		float dist_f = scene_dist(render_v2);
 
-    for (int k_i = 0; k_i < all_polygon_pos_size; k_i++) {
-      if (light_polygon_v4s[k_i].x == -1.0) {
-        break;
-      }
-    }
+    // 物体颜色
+		output_v4 = mix(output_v4, vec4(1.0, 0.4, 0.0, 1.0), clamp(-dist_f, 0.0, 1.0));
 
-    // 绘制光
-    for (int k_i = 0; k_i < max_light_length; k_i++) {
-      // 无法知道数组长度，所以最后位 x 传 -1
-      if (light_pos_v4s[k_i].x == -1.0) {
-        break;
-      }
-      vec4 light_v4 = draw_light(render_v2, light_pos_v4s[k_i].xy, light_radius_v4s[k_i].x, light_color_v4s[k_i]);
-      float shadow_f = shadow(render_v2, light_pos_v4s[k_i].xy, 10.0);
-      output_v4 += light_v4 * shadow_f;
-    }
+		// 绘制光
+    vec4 light_v4;
+    float shadow_f;
+		for (int k_i = 0; k_i < max_light_length; k_i++) {
+			// 无法知道数组长度，所以最后位 x 传 -1
+			if (light_pos_radius_v4s[k_i].x == -1.0) {
+				break;
+			}
+			light_v4 = draw_light(render_v2, light_pos_radius_v4s[k_i].xy, light_pos_radius_v4s[k_i].z, light_color_v4s[k_i]);
+			shadow_f = shadow(render_v2, light_pos_radius_v4s[k_i].xy, 10.0);
+			output_v4 += light_v4 * shadow_f;
+		}
 
-    // 圆
-    output_v4 = mix(output_v4, vec4(1.0, 0.4, 0.0, 1.0), clamp(-dist_f, 0.0, 1.0));
 
-    // output_v4 *= color;
-    // ALPHA_TEST(output_v4);
-    return output_v4;
-  }
+		// output_v4 *= color;
+		// ALPHA_TEST(output_v4);
+		return output_v4;
+	}
 }%
