@@ -32,7 +32,6 @@ export class sdf_shadow extends Component {
 		]);
 		// 多边形
 		material.setProperty("light_polygon_v4s", [
-			cc.v2(-1),
 			cc.v2(600, 100),
 			cc.v2(700, 100),
 			cc.v2(700, 200),
