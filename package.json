@@ -1,9 +1,9 @@
 {
+  "creator": {
+    "version": "3.4.2"
+  },
   "name": "mk_sdf_shadow",
   "type": "3d",
   "uuid": "a4a59486-6fbf-423e-aad7-ed0ae6e98597",
-  "version": "3.3.2",
-  "creator": {
-    "version": "3.3.2"
-  }
+  "version": "3.4.2"
 }

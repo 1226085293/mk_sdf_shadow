@@ -9,16 +9,15 @@ export class sdf_shadow extends Component {
 		cc.game.frameRate = 500;
 	}
 	start() {
-		// let _canvas = document.getElementById('capture_canvas');
-		// if (!_canvas) { _canvas = document.createElement('canvas');
-		// const gl = _canvas['getContext']("webgl");
-		// if (!gl) {
-		// 	cc.log("webgl");
-		// }
-		// const gl2 = _canvas['getContext']("webgl2");
-		// if (!gl2) {
-		// 	cc.log("webgl2");
-		// }
+		let canvas = document.createElement("canvas");
+		const gl = canvas["getContext"]("webgl");
+		if (gl) {
+			cc.log("webgl");
+		}
+		const gl2 = canvas["getContext"]("webgl2");
+		if (gl2) {
+			cc.log("webgl2");
+		}
 
 		let material = this.node.getComponent(cc.Sprite).material;
 

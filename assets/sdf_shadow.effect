@@ -114,7 +114,7 @@ CCProgram sprite-fs %{
     }
 
     // 绘制多边形
-    if (light_polygon_v4s[0].x != -1.0) {
+    // if (light_polygon_v4s[0].x != -1.0) {
       // 方案1
       // for (int k_i = 0; k_i < max_polygon_size; ++k_i) {
       //   for (int k2_i = 0; k2_i < max_polygon_pos_size; ++k2_i) {
@@ -127,7 +127,7 @@ CCProgram sprite-fs %{
       //     }
       //   }
       // }
-    }
+    // }
     return m;
   }
 
