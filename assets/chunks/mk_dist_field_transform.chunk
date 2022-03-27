@@ -1,53 +1,53 @@
 // 距离场变换函数
 
 // 平滑合并
-float smooth_merge(float d1, float d2, float k) {
+float smooth_merge(float dist_f_, float dist2_f_, float k_f_) {
 	// clamp(x,y,z)：小于y返回y，大于z返回z，否则返回x
 	// mix(x,y,z)：返回x到y的插值，z为插值系数, 例: mix(1,2,0.5) = 1.5
 
-	// k 如果不超过 abs(d1 - d2)，那么都是无效值（0 或 1）
-    float h = clamp(0.5 + 0.5 * (d2 - d1) / k, 0.0, 1.0);
-	// 假设 k = 0, d1 = 2, d2 = 1，则 h = 0, mix(...) = d2, k * h * (1.0 - h) = 0，结果为 d2
-	// 假设 k = 0, d1 = 1, d2 = 2，则 h = 1, mix(...) = d1, k * h * (1.0 - h) = 0，结果为 d1
-	// 如果 K 为无效值，那么返回结果将 = min(d1, d2)，和 merge 结果相同
-	// 如果 k 为有效值，那么将返回比 min(d1, d2) 还要小的值，k 越大，结果越小
-    return mix(d2, d1, h) - k * h * (1.0 - h);
+	// k_f_ 如果不超过 abs(dist_f_ - dist2_f_)，那么都是无效值（0 或 1）
+    float h_f = clamp(0.5 + 0.5 * (dist2_f_ - dist_f_) / k_f_, 0.0, 1.0);
+	// 假设 k_f_ = 0, dist_f_ = 2, dist2_f_ = 1，则 h_f = 0, mix(...) = dist2_f_, k_f_ * h_f * (1.0 - h_f) = 0，结果为 dist2_f_
+	// 假设 k_f_ = 0, dist_f_ = 1, dist2_f_ = 2，则 h_f = 1, mix(...) = dist_f_, k_f_ * h_f * (1.0 - h_f) = 0，结果为 dist_f_
+	// 如果 k_f_ 为无效值，那么返回结果将 = min(dist_f_, dist2_f_)，和 merge 结果相同
+	// 如果 k_f_ 为有效值，那么将返回比 min(dist_f_, dist2_f_) 还要小的值，k_f_  越大，结果越小
+    return mix(dist2_f_, dist_f_, h_f) - k_f_ * h_f * (1.0 - h_f);
 }
 
 
 // 合并
-float merge(float d1, float d2) {
-	return min(d1, d2);
+float merge(float dist_f_, float dist2_f_) {
+	return min(dist_f_, dist2_f_);
 }
 
 // 合并排除
-float merge_exclude(float d1, float d2) {
-	// 如果 d1 < 0，d2 > 0  例 d1 = -2  d2 = 6, r = -2， 例 d1 = -2  d2 = 3, r = -2
-	// 如果 d1 > 0，d2 < 0  例 d1 = 2  d2 = -6, r = -6， 例 d1 = -2  d2 = 3, r = -2
-	// 如果 d1 > 0，d2 > 0  例 d1 = 2  d2 = 6, r = 2， 例 d1 = 5  d2 = 3, r = 3
-	// 如果 d1 < 0，d2 < 0  例 d1 = -2  d2 = -3, r = 4， 例 d1 = -3  d2 = -2, r = 4
-	// 所以最终结果只会将 d1 < 0 && d2 < 0 的值变成 > 0 的值
-	return min(max(-d1, d2), max(-d2, d1));
+float merge_exclude(float dist_f_, float dist2_f_) {
+	// 如果 dist_f_ < 0，dist2_f_ > 0  例 dist_f_ = -2  dist2_f_ = 6, r = -2， 例 dist_f_ = -2  dist2_f_ = 3, r = -2
+	// 如果 dist_f_ > 0，dist2_f_ < 0  例 dist_f_ = 2  dist2_f_ = -6, r = -6， 例 dist_f_ = -2  dist2_f_ = 3, r = -2
+	// 如果 dist_f_ > 0，dist2_f_ > 0  例 dist_f_ = 2  dist2_f_ = 6, r = 2， 例 dist_f_ = 5  dist2_f_ = 3, r = 3
+	// 如果 dist_f_ < 0，dist2_f_ < 0  例 dist_f_ = -2  dist2_f_ = -3, r = 4， 例 dist_f_ = -3  dist2_f_ = -2, r = 4
+	// 所以最终结果只会将 dist_f_ < 0 && dist2_f_ < 0 的值变成 > 0 的值
+	return min(max(-dist_f_, dist2_f_), max(-dist2_f_, dist_f_));
 }
 
 // 减去
-float substract(float d1, float d2) {
-	// d1 < 0, d2 > 0  例 d1 = -2, d2 = 3，r = 3, 例 d1 = -2, d2 = 1，r = 2， 则值 > 0
-	// d1 > 0, d2 < 0  例 d1 = 2, d2 = -1，r = -1, 例 d1 = 2, d2 = -5，r = -2， 则值 < 0 
-	// d1 > 0, d2 > 0  例 d1 = 1, d2 = 2，r = 2, 例 d1 = 2, d2 = 1，r = 1， 则值 > 0 
-	// d1 < 0, d2 < 0  例 d1 = -2, d2 = -3，r = 4, 例 d1 = -2, d2 = -1，r = 4， 则值 > 0
-	// 所以最终结果只会展示 d2, 且 d1 和 d2 重合时不会展示
-	return max(-d1, d2);
+float substract(float dist_f_, float dist2_f_) {
+	// dist_f_ < 0, dist2_f_ > 0  例 dist_f_ = -2, dist2_f_ = 3，r = 3, 例 dist_f_ = -2, dist2_f_ = 1，r = 2， 则值 > 0
+	// dist_f_ > 0, dist2_f_ < 0  例 dist_f_ = 2, dist2_f_ = -1，r = -1, 例 dist_f_ = 2, dist2_f_ = -5，r = -2， 则值 < 0 
+	// dist_f_ > 0, dist2_f_ > 0  例 dist_f_ = 1, dist2_f_ = 2，r = 2, 例 dist_f_ = 2, dist2_f_ = 1，r = 1， 则值 > 0 
+	// dist_f_ < 0, dist2_f_ < 0  例 dist_f_ = -2, dist2_f_ = -3，r = 4, 例 dist_f_ = -2, dist2_f_ = -1，r = 4， 则值 > 0
+	// 所以最终结果只会展示 dist2_f_, 且 dist_f_ 和 dist2_f_ 重合时不会展示
+	return max(-dist_f_, dist2_f_);
 }
 
 // 相交
-float intersect(float d1, float d2) {
-	// d1 < 0, d2 > 0  例 d1 = -2, d2 = 3，r = 3, 例 d1 = -2, d2 = 1，r = 1， 则值 > 0
-	// d1 > 0, d2 < 0  例 d1 = 2, d2 = -1，r = 2, 例 d1 = 2, d2 = -5，r = 2， 则值 > 0 
-	// d1 > 0, d2 > 0  例 d1 = 1, d2 = 2，r = 2, 例 d1 = 2, d2 = 1，r = 2， 则值 > 0 
-	// d1 < 0, d2 < 0  例 d1 = -2, d2 = -3，r = -2, 例 d1 = -2, d2 = -1，r = -1， 则值 < 0
-	// 所以最终结果只会在 d1 和 d2 重合时展示
-	return max(d1, d2);
+float intersect(float dist_f_, float dist2_f_) {
+	// dist_f_ < 0, dist2_f_ > 0  例 dist_f_ = -2, dist2_f_ = 3，r = 3, 例 dist_f_ = -2, dist2_f_ = 1，r = 1， 则值 > 0
+	// dist_f_ > 0, dist2_f_ < 0  例 dist_f_ = 2, dist2_f_ = -1，r = 2, 例 dist_f_ = 2, dist2_f_ = -5，r = 2， 则值 > 0 
+	// dist_f_ > 0, dist2_f_ > 0  例 dist_f_ = 1, dist2_f_ = 2，r = 2, 例 dist_f_ = 2, dist2_f_ = 1，r = 2， 则值 > 0 
+	// dist_f_ < 0, dist2_f_ < 0  例 dist_f_ = -2, dist2_f_ = -3，r = -2, 例 dist_f_ = -2, dist2_f_ = -1，r = -1， 则值 < 0
+	// 所以最终结果只会在 dist_f_ 和 dist2_f_ 重合时展示
+	return max(dist_f_, dist2_f_);
 }
 
 // 逆时针旋转

@@ -159,100 +159,97 @@ CCProgram sprite-fs %{
   }
 
   // 软阴影
-	float shadow(vec2 render_v2, vec2 light_v2, float hard_f) {
+	float shadow(vec2 render_v2_, vec2 light_v2_, float hard_f_) {
 		// 当前渲染位置到光源位置的方向向量
-		vec2 render_to_light_dir_v2 = normalize(light_v2 - render_v2);
+		vec2 render_to_light_dir_v2 = normalize(light_v2_ - render_v2_);
 		// 渲染位置至光源位置距离
-		float render_to_light_dist_f = length(render_v2 - light_v2);
+		float render_to_light_dist_f = length(render_v2_ - light_v2_);
 		// 可见光的一部分，从一个半径开始（最后添加下半部分）；
-		float brightness_f = hard_f * render_to_light_dist_f;
+		float brightness_f = hard_f_ * render_to_light_dist_f;
 		// 行走距离
 		float travel_dist_f = 0.01;
-    // 场景距离
-    float dist_f;
+
 		for (int k_i = 0; k_i < max_shadow_step; ++k_i) {				
-      // 当前位置到场景的距离
-      dist_f = scene_dist(render_v2 + render_to_light_dir_v2 * travel_dist_f);
+		// 当前位置到场景的距离
+			float dist_f = scene_dist(render_v2_ + render_to_light_dir_v2 * travel_dist_f);
 
-      // 渲染点在物体内部
-      if (dist_f < -hard_f) {
-        return 0.0;
-      }
-        
-      // dist_f 不变，brightness_f 越小，在越靠近光源和物体时 brightness_f 越小
-      brightness_f = min(brightness_f, dist_f / travel_dist_f);
-      
-      // max 避免渲染点距离物理表面过近导致极小耗尽遍历次数，所以有可能会跳过物体距离小于1.0的阴影绘制
-      // abs 避免朝回走
-      travel_dist_f += max(1.0, abs(dist_f));
+			// 渲染点在物体内部
+			if (dist_f < -hard_f_) {
+				return 0.0;
+			}
+			 
+			// dist_f 不变，brightness_f 越小，在越靠近光源和物体时 brightness_f 越小
+			brightness_f = min(brightness_f, dist_f / travel_dist_f);
 
-      // 渲染点的距离超过光源点
-      if (travel_dist_f > render_to_light_dist_f) {
-        break;
-      }
+			// max 避免渲染点距离物理表面过近导致极小耗尽遍历次数，所以有可能会跳过物体距离小于1.0的阴影绘制
+			// abs 避免朝回走
+			travel_dist_f += max(1.0, abs(dist_f));
+
+			// 渲染点的距离超过光源点
+			if (travel_dist_f > render_to_light_dist_f) {
+				break;
+			}
 		}
 
-		// 消除波纹线
-		// brightness_f * render_to_light_dist_f 根据距离平滑, 离光源越近越小
-		// brightness_f = clamp((brightness_f * render_to_light_dist_f / hard_f), 0.0, 1.0);
-		// 放大阴影，hard_f 越大结果越小则阴影越大, hard_f / (2.0 * hard_f) 使结果趋近于0.5，用于平滑过渡
-		brightness_f = clamp((brightness_f * render_to_light_dist_f + hard_f) / (2.0 * hard_f), 0.0, 1.0);
+		// brightness_f * render_to_light_dist_f 根据距离平滑, 离光源越近越小，消除波纹线
+		// 放大阴影，hard_f 越大结果越小则阴影越大, hard_f_ / (2.0 * hard_f_) 使结果趋近于0.5，用于平滑过渡
+		brightness_f = clamp((brightness_f * render_to_light_dist_f + hard_f_) / (2.0 * hard_f_), 0.0, 1.0);
 		brightness_f = smoothstep(0.0, 1.0, brightness_f);
 		return brightness_f;
 	}
 
   // 硬阴影
-  float shadow3(vec2 p, vec2 pos, float radius)
-  {
-    // 当前渲染位置到光源位置的方向向量
-    vec2 dir = normalize(pos - p);
-    // 渲染位置至光源位置距离
-    float dl = length(pos - p);
-    // 
-    float dt = 0.01;
+  float shadow3(vec2 render_v2_, vec2 light_v2_) {
+		// 当前渲染位置到光源位置的方向向量
+    vec2 render_to_light_dir_v2 = normalize(light_v2_ - render_v2_);
+		// 渲染位置至光源位置距离
+    float render_to_light_dist_f = length(render_v2_ - light_v2_);
+		// 行走距离
+    float travel_dist_f = 0.01;
 
-    for (int i = 0; i < max_shadow_step; ++i)
-    {				
+    for (int k_i = 0; k_i < max_shadow_step; ++k_i) {				
       // 渲染点到场景的距离
-      float sd = scene_dist(p + dir * dt);
+      float dist_f = scene_dist(render_v2_ + render_to_light_dir_v2 * travel_dist_f);
       // 小于0表示在物体内部
-      if (sd < 0.0) {
+      if (dist_f < 0.0) {
         return 0.0;
       }
       // abs：避免往回走
-      dt += abs(sd);
+      // max 避免渲染点距离物理表面过近导致极小耗尽遍历次数，所以有可能会跳过物体距离小于1.0的阴影绘制
+      travel_dist_f += max(1.0, abs(dist_f));
+      // travel_dist_f += abs(dist_f); 精确的阴影
+
       // 渲染点的距离超过光源点
-      if (dt > dl) {
+      if (travel_dist_f > render_to_light_dist_f) {
         return 1.0;
       }
-      
     }
     return 0.0;
   }
-
+	
   // 外发光
   vec4 outer_glow(float dist_f_, vec4 color_v4_, vec4 input_color_v4_, float radius_f_) {
-    // dist > radius 结果为0
-    // dist < 0 结果为1
-    // dist > 0 && dist < radius 则 dist 越大 a 越小，范围 0 ~ 1
-    float a = abs(clamp(dist_f_ / radius_f_, 0.0, 1.0) - 1.0);
+    // dist_f_ > radius_f_ 结果为 0
+    // dist_f_ < 0 结果为 1
+    // dist_f_ > 0 && dist_f_ < radius_f_ 则 dist_f_ 越大 a_f 越小，范围 0 ~ 1
+    float a_f = abs(clamp(dist_f_ / radius_f_, 0.0, 1.0) - 1.0);
+    // pow：平滑 a_f
     // max and min：防止在物体内部渲染
-    // pow(a, 5.0)：平滑 a
-    float b = min(max(0.0, dist_f_), pow(a, 5.0));
-		return input_color_v4_ * b;
+    float b_f = min(max(0.0, dist_f_), pow(a_f, 5.0));
+    return color_v4_ + input_color_v4_ * b_f;
   }
   
   // 内发光
   vec4 inner_glow(float dist_f_, vec4 color_v4_, vec4 input_color_v4_, float radius_f_) {
-    // (dist + radius_f_) > radius 结果为1
-    // (dist + radius_f_) < 0 结果为0
-    // (dist + radius_f_) > 0 && dist < radius 则 dist 越大 a 越大，范围 0 ~ 1
-    float a = clamp((dist_f_ + radius_f_) / radius_f_, 0.0, 1.0);
-    // pow(a, 5.0)：平滑 a
+    // (dist_f_ + radius_f_) > radius_f_ 结果为1
+    // (dist_f_ + radius_f_) < 0 结果为0
+    // (dist_f_ + radius_f_) > 0 && (dist_f_ + radius_f_) < radius_f_ 则 dist_f_ 越大 a_f 越大，范围 0 ~ 1
+    float a_f = clamp((dist_f_ + radius_f_) / radius_f_, 0.0, 1.0);
+    // pow：平滑 a_f
     // 1.0+：在物体内渲染
     // max(1.0, sign(dist_f_) * -：dist_f_ < 0 时返回 -1，dist_f_ == 0 返回 0，dist_f_ > 0 返回 1，所以有效值只在物体内部
-    float b = 1.0 - max(1.0, sign(dist_f_) * -(1.0 + pow(a, 5.0)));
-		return input_color_v4_ * b;
+    float b_f = 1.0 - max(1.0, sign(dist_f_) * -(1.0 + pow(a_f, 5.0)));
+		return color_v4_ + input_color_v4_ * b_f;
   }
 
 	vec4 frag () {
@@ -279,6 +276,7 @@ CCProgram sprite-fs %{
 			}
 			light_v4 = draw_light(render_v2, light_pos_radius_v4s[k_i].xy, light_pos_radius_v4s[k_i].z, light_color_v4s[k_i]);
 			shadow_f = shadow(render_v2, light_pos_radius_v4s[k_i].xy, 10.0);
+			// shadow_f = shadow3(render_v2, light_pos_radius_v4s[k_i].xy);
 			output_v4 += light_v4 * shadow_f;
 		}
 
@@ -287,11 +285,11 @@ CCProgram sprite-fs %{
     // 物体颜色
 		output_v4 = mix(output_v4, vec4(1.0, 0.4, 0.0, 1.0), clamp(-dist_f, 0.0, 1.0));
     // 外发光
-    output_v4 += outer_glow(dist_f, output_v4, vec4(1.0, 0.0, 0.0, 1.0), 50.0);
+    // output_v4 = outer_glow(dist_f, output_v4, vec4(1.0, 1.0, 0.0, 1.0), 50.0);
     // 内发光
-    output_v4 += inner_glow(dist_f, output_v4, vec4(0.0, 0.0, 0.0, 1.0), 50.0);
-    // 物体轮廓
-    output_v4 = mix(output_v4, vec4(0.0, 0.0, 0.0, 1.0), clamp(dist_f + 2.0, 0.0, 1.0) - clamp(dist_f, 0.0, 1.0));
+    output_v4 = inner_glow(dist_f, output_v4, vec4(0.0, 0.0, 0.0, 1.0), 50.0);
+    // 物体描边
+    // output_v4 = mix(output_v4, vec4(1.0, 1.0, 0.0, 1.0), abs(clamp(dist_f - 5.0, 0.0, 1.0) - clamp(dist_f, 0.0, 1.0)));
 
 		// output_v4 *= color;
 		// ALPHA_TEST(output_v4);

@@ -31,7 +31,7 @@ export class sdf_shadow extends Component {
 		};
 		// 有效值 min: 1  0   max: 1 2
 		// 有效值 min: 0  1   max: 2 1
-		let a = smooth_merge(-1, 3, 4.1);
+		let a = smooth_merge(5, 5, 4.1);
 		let aaaa = smooth_merge(1, 3, 2.1);
 		let aaaaa = smooth_merge(3, 1, 2.1);
 		let a2 = smooth_merge(1, 1, 0.5);
@@ -134,8 +134,8 @@ export class sdf_shadow extends Component {
 			cc.v4(650 - 50 * sin_n, 100, 20),
 			cc.v4(250 + 50 * sin_n, 180, 20),
 			cc.v4(250 - 50 * sin_n, 180, 20),
-			cc.v4(400, 180, 20),
-			cc.v4(500, 180, 20),
+			cc.v4(450 + 50 * sin_n, 180, 20),
+			cc.v4(450 - 50 * sin_n, 180, 20),
 			cc.v4(600, 180, 20),
 			cc.v2(-1),
 		]);
