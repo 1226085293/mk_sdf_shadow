@@ -97,16 +97,43 @@ CCProgram sprite-fs %{
   float scene_dist(vec2 render_v2) {
     float m = 9999.0;
 
-    // 绘制圆
-    for (int k_i = 0; k_i < max_circle_size; ++k_i) {
+    // 平滑合并
+    float d = smooth_merge(sdf_circle(translate(render_v2, light_circle_v4s[0].xy), light_circle_v4s[0].z),
+      sdf_circle(translate(render_v2, light_circle_v4s[1].xy), light_circle_v4s[1].z), 15.0);
+
+    // 合并排除
+    float d2 = merge_exclude(sdf_circle(translate(render_v2, light_circle_v4s[2].xy), light_circle_v4s[2].z),
+      sdf_circle(translate(render_v2, light_circle_v4s[3].xy), light_circle_v4s[3].z));
+
+    // 减去
+    float d3 = substract(sdf_circle(translate(render_v2, light_circle_v4s[4].xy), light_circle_v4s[4].z),
+      sdf_circle(translate(render_v2, light_circle_v4s[5].xy), light_circle_v4s[5].z));
+
+      
+    // 相加
+    float d4 = intersect(sdf_circle(translate(render_v2, light_circle_v4s[6].xy), light_circle_v4s[6].z),
+      sdf_circle(translate(render_v2, light_circle_v4s[7].xy), light_circle_v4s[7].z));
+    
+    m = merge(m, d);
+    m = merge(m, d2);
+    m = merge(m, d3);
+    m = merge(m, d4);
+
+    // 圆
+    for (int k_i = 8; k_i < max_circle_size; ++k_i) {
       if (light_circle_v4s[k_i].x == -1.0) {
         break;
       }
       m = merge(m, sdf_circle(translate(render_v2, light_circle_v4s[k_i].xy), light_circle_v4s[k_i].z));
     }
 
+    m = merge(m, sdf_box(
+      rotate_ccw(translate(render_v2, light_box_v4s[0].xy), mod(cc_time.x, 3.1415)),
+      light_box_v4s[0].zw
+    ));
+
     // 绘制矩形
-    for (int k_i = 0; k_i < max_box_size; ++k_i) {
+    for (int k_i = 1; k_i < max_box_size; ++k_i) {
       if (light_box_v4s[k_i].x == -1.0) {
         break;
       }
@@ -203,6 +230,31 @@ CCProgram sprite-fs %{
     return 0.0;
   }
 
+  // 外发光
+  vec4 outer_glow(float dist_f_, vec4 color_v4_, vec4 input_color_v4_, float radius_f_) {
+    // dist > radius 结果为0
+    // dist < 0 结果为1
+    // dist > 0 && dist < radius 则 dist 越大 a 越小，范围 0 ~ 1
+    float a = abs(clamp(dist_f_ / radius_f_, 0.0, 1.0) - 1.0);
+    // max and min：防止在物体内部渲染
+    // pow(a, 5.0)：平滑 a
+    float b = min(max(0.0, dist_f_), pow(a, 5.0));
+		return input_color_v4_ * b;
+  }
+  
+  // 内发光
+  vec4 inner_glow(float dist_f_, vec4 color_v4_, vec4 input_color_v4_, float radius_f_) {
+    // (dist + radius_f_) > radius 结果为1
+    // (dist + radius_f_) < 0 结果为0
+    // (dist + radius_f_) > 0 && dist < radius 则 dist 越大 a 越大，范围 0 ~ 1
+    float a = clamp((dist_f_ + radius_f_) / radius_f_, 0.0, 1.0);
+    // pow(a, 5.0)：平滑 a
+    // 1.0+：在物体内渲染
+    // max(1.0, sign(dist_f_) * -：dist_f_ < 0 时返回 -1，dist_f_ == 0 返回 0，dist_f_ > 0 返回 1，所以有效值只在物体内部
+    float b = 1.0 - max(1.0, sign(dist_f_) * -(1.0 + pow(a, 5.0)));
+		return input_color_v4_ * b;
+  }
+
 	vec4 frag () {
 		vec4 output_v4;
 		// 渲染坐标
@@ -211,9 +263,11 @@ CCProgram sprite-fs %{
 		vec2 center_v2 = cc_screenSize.xy / 2.0;
 		
 		float dist_f = scene_dist(render_v2);
-
-    // 物体颜色
-		output_v4 = mix(output_v4, vec4(1.0, 0.4, 0.0, 1.0), clamp(-dist_f, 0.0, 1.0));
+    
+    // 背景颜色
+    output_v4 = vec4(0.2, 0.2, 0.2, 1.0) * (1.0 - length(center_v2 - render_v2) / cc_screenSize.x);
+    // 网格（0.9：网格颜色最低值， 1.0：最大值不超过原颜色）
+    output_v4 *= clamp(min(mod(render_v2.y, 10.0), mod(render_v2.x, 10.0)), 0.9, 1.0);
 
 		// 绘制光
     vec4 light_v4;
@@ -228,6 +282,16 @@ CCProgram sprite-fs %{
 			output_v4 += light_v4 * shadow_f;
 		}
 
+    // 外发光 < 0 = 1, > 0 && < 范围 则 = smoothstep，否则 = 1
+    // output_v4 *= outer_glow(dist_f, 50.0, 1.0);
+    // 物体颜色
+		output_v4 = mix(output_v4, vec4(1.0, 0.4, 0.0, 1.0), clamp(-dist_f, 0.0, 1.0));
+    // 外发光
+    output_v4 += outer_glow(dist_f, output_v4, vec4(1.0, 0.0, 0.0, 1.0), 50.0);
+    // 内发光
+    output_v4 += inner_glow(dist_f, output_v4, vec4(0.0, 0.0, 0.0, 1.0), 50.0);
+    // 物体轮廓
+    output_v4 = mix(output_v4, vec4(0.0, 0.0, 0.0, 1.0), clamp(dist_f + 2.0, 0.0, 1.0) - clamp(dist_f, 0.0, 1.0));
 
 		// output_v4 *= color;
 		// ALPHA_TEST(output_v4);
