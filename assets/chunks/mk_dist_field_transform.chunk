@@ -51,18 +51,18 @@ float intersect(float dist_f_, float dist2_f_) {
 }
 
 // 逆时针旋转
-vec2 rotate_ccw(vec2 p, float a) {
-	mat2 m = mat2(cos(a), sin(a), -sin(a), cos(a));
-	return p * m;	
+vec2 rotate_ccw(vec2 render_v2_, float radian_f_) {
+	mat2 m = mat2(cos(radian_f_), sin(radian_f_), -sin(radian_f_), cos(radian_f_));
+	return render_v2_ * m;	
 }
 
 // 顺时针旋转
-vec2 rotate_cw(vec2 p, float a) {
-	mat2 m = mat2(cos(a), -sin(a), sin(a), cos(a));
-	return p * m;
+vec2 rotate_cw(vec2 render_v2_, float radian_f_) {
+	mat2 m = mat2(cos(radian_f_), -sin(radian_f_), sin(radian_f_), cos(radian_f_));
+	return render_v2_ * m;
 }
 
 // 平移
-vec2 translate(vec2 p, vec2 t) {
-	return p - t;
+vec2 translate(vec2 render_v2_, vec2 move_v2_) {
+	return render_v2_ - move_v2_;
 }
