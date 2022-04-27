@@ -8,60 +8,7 @@ export class sdf_shadow extends Component {
 	private _material: cc.renderer.MaterialInstance;
 	private _light_circle_v4s_handle_n: number;
 	/* -------------------------------segmentation------------------------------- */
-	onLoad() {
-		cc.game.frameRate = 500;
-	}
 	start() {
-		let mix = (x, y, level) => {
-			return x * (1 - level) + y * level;
-		};
-		let clamp = (x, min, max) => {
-			if (x < min) {
-				return min;
-			}
-			if (x > max) {
-				return max;
-			}
-			return x;
-		};
-		let smooth_merge = (d1, d2, k) => {
-			let h = clamp(0.5 + (0.5 * (d2 - d1)) / k, 0.0, 1.0);
-			let mix_n = mix(d2, d1, h);
-			return mix_n - k * h * (1.0 - h);
-		};
-		// 有效值 min: 1  0   max: 1 2
-		// 有效值 min: 0  1   max: 2 1
-		let a = smooth_merge(5, 5, 4.1);
-		let aaaa = smooth_merge(1, 3, 2.1);
-		let aaaaa = smooth_merge(3, 1, 2.1);
-		let a2 = smooth_merge(1, 1, 0.5);
-		let b = smooth_merge(1, 2, 1);
-		let c = smooth_merge(0, 1, 0);
-		let d = smooth_merge(2, 1, 1);
-
-		let e = smooth_merge(10, 8, 2.5);
-		let f = smooth_merge(1, 2, 0.5);
-
-		let e2 = smooth_merge(2, 1, 1);
-		let f2 = smooth_merge(1, 2, 1);
-
-		let e3 = smooth_merge(2, 1, 2);
-		let f3 = smooth_merge(1, 2, 2);
-
-		let e4 = smooth_merge(2, 1, 4);
-		let f4 = smooth_merge(1, 2, 4);
-
-		// webgl 版本检测
-		{
-			let canvas = document.createElement("canvas");
-			if (canvas["getContext"]("webgl")) {
-				cc.log("webgl");
-			}
-			if (canvas["getContext"]("webgl2")) {
-				cc.log("webgl2");
-			}
-		}
-
 		this._material = this.node.getComponent(cc.Sprite).material;
 		this._light_circle_v4s_handle_n = this._material.passes[0].getHandle("light_circle_v4s");
 
